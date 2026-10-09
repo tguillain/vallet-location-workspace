@@ -90,7 +90,7 @@ En tant que responsable d’agence ou directeur, je veux voir dans un seul ongle
 - **FR-012** — Une réservation pour un **client grand compte** n’est valable qu’avec un **numéro de bon de commande** : sans lui, la réservation est refusée. L’agent indique à la saisie si le client est grand compte. *(Révélation 2.)*
 - **FR-013** — Au retour, une machine est nettoyée et contrôlée : **elle ne peut pas être relouée le jour de son retour** (le dernier jour de location). Une location peut commencer au plus tôt le lendemain du retour. *(Révélation 3 — déjà garanti par FR-001, bornes incluses.)*
 - **FR-014** — Une réservation peut être saisie comme **option** : le client a **48 h** pour confirmer. Tant qu’elle n’est pas expirée, une option bloque la machine comme une réservation ferme. Confirmée, elle devient ferme ; non confirmée au bout de 48 h, elle **saute** automatiquement et ne bloque plus la machine. Les réservations reprises des Excel sont fermes. *(Révélation 4.)*
-- **FR-015** — Une réservation qui n’a pas commencé peut être **annulée** ; elle reste visible comme annulée et ne bloque plus la machine. Un agent peut annuler une réservation saisie par **son** agence ; une réservation saisie par **une autre agence** ne peut être annulée **que par un responsable d’agence**. *(Révélation 5.)*
+- **FR-015** — Une réservation qui n’a pas commencé peut être **annulée** ; elle reste visible comme annulée et ne bloque plus la machine. Un agent peut annuler une réservation saisie par **son** agence ; une réservation saisie par **une autre agence** ne peut être annulée **que par un responsable d’agence**. L’action « Annuler » n’est proposée qu’à un utilisateur qui a le droit d’annuler cette réservation ; l’API refuse quand même toute annulation non autorisée. *(Révélation 5.)*
 
 ### Ce que l'outil ne fait pas (cette itération)
 
@@ -119,7 +119,7 @@ Appli pour particuliers, tarifs / devis / facturation, organisation logistique d
 12. **Étant donné** un client grand compte, **quand** je réserve COMP30 du 13 au 15/10 sans numéro de bon de commande, **alors** c’est refusé ; avec le numéro « BC-2026-118 », c’est accepté et le numéro est affiché dans le planning.
 13. **Étant donné** NAC140 réservée du 19 au 23/10 (retour le 23), **quand** Grenoble la réserve à partir du 23/10, **alors** c’est refusé ; à partir du 24/10, c’est accepté.
 14. **Étant donné** le 12/10 à 9 h, **quand** je réserve COMP30 du 13 au 15/10 en option, **alors** elle apparaît « Option — à confirmer avant le 14/10 9 h » et COMP30 n’est plus proposée sur ces dates ; quand je la confirme, elle devient ferme ; une option non confirmée après le 14/10 9 h ne bloque plus la machine.
-15. **Étant donné** Lyon Est connecté en agent, **quand** j’annule la réservation NAC140 de BTP Rhone (saisie par Grenoble), **alors** c’est refusé (« réservée au responsable d’agence ») ; en responsable d’agence, c’est accepté et NAC140 redevient disponible du 19 au 23/10.
+15. **Étant donné** Lyon Est connecté en agent, **quand** j’ouvre le planning, **alors** la réservation NAC140 de BTP Rhone (saisie par Grenoble) n’a pas d’action « Annuler », et une annulation envoyée directement à l’API est refusée (« réservée au responsable d’agence ») ; en responsable d’agence, c’est accepté et NAC140 redevient disponible du 19 au 23/10.
 16. **Étant donné** Lyon Est connecté en agent, **quand** j’annule la réservation NAC089 de Facades Martin (saisie par Lyon Est), **alors** c’est accepté et elle disparaît de « À traiter ».
 
 ## Success Criteria *(mandatory)*

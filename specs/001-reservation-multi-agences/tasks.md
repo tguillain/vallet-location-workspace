@@ -150,7 +150,7 @@ Toutes les commandes passent par Docker (constitution V) : `docker compose -f ba
 
 - [ ] T048 [P] [US3] `back/tests/Feature/Reservations/PlanningTest.php` : `test_spec_us3_1` (NAC112 BTP Rhone et Maconnerie Duclos `has_conflict`, `meta.conflict_count = 2`), statuts calculés (`option_expired`)
 - [ ] T049 [P] [US3] `back/tests/Feature/Reservations/ConfirmOptionTest.php` : `test_spec_14_confirm` (option confirmée → `firm`) ; option expirée ou réservation ferme → 422 `option_not_active`
-- [ ] T050 [P] [US3] `back/tests/Feature/Reservations/CancelReservationTest.php` : `test_spec_15` (Lyon Est agent annule NAC140 BTP Rhone saisie par Grenoble → 403 `cancel_forbidden` ; en `manager` → 200, NAC140 disponible du 19 au 23/10), `test_spec_16` (Lyon Est agent annule NAC089 Facades Martin → 200), réservation commencée (ECH40) → 422 `already_started`
+- [ ] T050 [P] [US3] `back/tests/Feature/Reservations/CancelReservationTest.php` : `test_spec_15` (Lyon Est agent : `can_cancel = false` sur NAC140 BTP Rhone saisie par Grenoble dans `GET /reservations`, et `POST cancel` → 403 `cancel_forbidden` ; en `manager` → 200, NAC140 disponible du 19 au 23/10), `test_spec_16` (Lyon Est agent annule NAC089 Facades Martin → 200), réservation commencée (ECH40) → 422 `already_started`
 
 ### Implémentation (back)
 
@@ -160,7 +160,7 @@ Toutes les commandes passent par Docker (constitution V) : `docker compose -f ba
 
 ### Implémentation (web)
 
-- [ ] T054 [US3] Composant `web/app/components/PlanningTable.vue` et page `web/app/pages/planning.vue` : colonnes machine, agence de la machine, client, du, au, saisie par, statut (+ BC), état (conflit, nouvelle), actions Confirmer / Annuler selon `can_confirm` / `can_cancel` ; alerte conflits ; erreur 403 affichée
+- [ ] T054 [US3] Composant `web/app/components/PlanningTable.vue` et page `web/app/pages/planning.vue` : colonnes machine, agence de la machine, client, du, au, saisie par, statut (+ BC), état (conflit, nouvelle), actions Confirmer / Annuler affichées **uniquement** si `can_confirm` / `can_cancel` est vrai (un agent ne voit pas « Annuler » sur une réservation d’une autre agence — FR-015) ; alerte conflits ; erreur 403 affichée
 
 **Checkpoint**: tests spec US3, 14, 15, 16 verts ; planning utilisable.
 
