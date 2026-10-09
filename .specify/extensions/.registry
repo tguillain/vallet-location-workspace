@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "multirepo": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:276f750459a3aedb5540bd3fced59ebde0ddb1674fa4a2f8d0a0dec9c0146111",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.multirepo.branch",
+          "speckit.multirepo.status"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-09T08:42:49.908400+00:00"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+schema_version: "1.0"
+
+extension:
+  id: multirepo
+  name: "Multi-Repo Workspace"
+  version: "1.0.0"
+  description: "Creates the feature branch in every child repo a plan names, and reports what each one ended up with"
+  author: Xefi
+  license: MIT
+
+requires:
+  speckit_version: ">=1.0.0"
+  tools:
+    - name: git
+      required: true
+
+provides:
+  commands:
+    - name: speckit.multirepo.branch
+      file: commands/speckit.multirepo.branch.md
+      description: "Create or switch to the feature branch in each repo listed in plan.md"
+    - name: speckit.multirepo.status
+      file: commands/speckit.multirepo.status.md
+      description: "Report branch, uncommitted work and push state across the affected repos"
+
+hooks:
+  before_implement:
+    command: speckit.multirepo.branch
+    optional: false
+    description: "Branch every affected child repo before any code is written"
+  after_implement:
+    command: speckit.multirepo.status
+    optional: false
+    description: "Report per-repo state, since nothing else can call the feature done"
+
+tags:
+  - "multi-repo"
+  - "workspace"
+  - "branching"
+  - "git"

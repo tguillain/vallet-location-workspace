@@ -1,0 +1,36 @@
+# Which repositories make up this workspace.
+#
+# Single source of truth: ./bootstrap clones from it, .gitignore and .ignore are
+# generated from it, and the multirepo extension branches and reports on the
+# repos named here.
+#
+# Prefer the commands over editing by hand — a mistyped `dir:` does not fail
+# loudly, it makes the multirepo hooks skip that repo, so a feature implements
+# into a workspace that is only half-branched:
+#
+#   ./bin/repos add <clone-url>     trunk read from the remote, ignores synced
+#   ./bin/repos remove <dir>
+#
+# Hand edits are fine; run ./bin/sync-ignores afterwards.
+#
+# The workspace repo itself — the one holding this file and specs/ — is never
+# listed here. It is the parent, not a member.
+
+workspace:
+  # Prefix for any `url:` below that is not already a full URL.
+  git_base: git@gitlab.xefi.fr:xefi
+
+# Conventional directory names: back (Laravel), web (Nuxt), mobile (Flutter) —
+# plus whatever else a product actually needs, typically an n8n repo, a worker or
+# an infra repo. The front here is Nuxt, not Livewire: a workspace exists because
+# the product spans repositories, which is the case a Livewire monolith is not.
+#
+# Entries look like this — `./bin/repos add` writes them for you:
+#
+#   - dir: back                   # directory name under this workspace
+#     url: mon-produit-api.git    # appended to git_base, or give a full URL
+#     trunk: main                 # branch feature branches are cut from
+#     stack: Laravel              # informational, shown by ./bootstrap
+#     setup: bin/setup            # optional; run by ./bootstrap if executable
+
+repos:

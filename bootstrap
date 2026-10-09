@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+#
+# Bring the workspace up: clone every repo in repos.yml as a child of this
+# directory, keep the ignore files in sync, and run each repo's own setup.
+#
+# This root holds spec-kit's .specify/ and the specs. The children are ordinary
+# independent clones with their own remotes and branches — not submodules, and
+# each still works standalone when cloned somewhere else. The nesting exists so
+# one agent session can see the spec and every implementation at once, which is
+# what /speckit-implement needs.
+#
+# Idempotent. Re-run whenever repos.yml changes.
+#
+#   ./bootstrap                  clone or update everything, then set each repo up
+#   ./bootstrap --doctor         check prerequisites only, change nothing
+#   ./bootstrap --only api       restrict to one repo
+#   ./bootstrap --skip-setup     clone or update only, skip each repo's setup
+
+set -uo pipefail
+
+ROOT="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ONLY=""
+SKIP_SETUP=0
+DOCTOR_ONLY=0
+
+if [ -t 1 ]; then
+  B=$'\033[1m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; D=$'\033[2m'; N=$'\033[0m'
+else
+  B=""; G=""; Y=""; R=""; D=""; N=""
+fi
+
+step() { printf '\n%s==>%s %s%s%s\n' "$B" "$N" "$B" "$*" "$N"; }
+ok()   { printf '  %sok%s      %s\n' "$G" "$N" "$*"; }
+warn() { printf '  %swarn%s    %s\n' "$Y" "$N" "$*"; }
+bad()  { printf '  %sfail%s    %s\n' "$R" "$N" "$*"; }
+note() { printf '          %s%s%s\n' "$D" "$*" "$N"; }
+die()  { printf '\n%serror:%s %s\n' "$R" "$N" "$*" >&2; exit 1; }
+usage() { sed -n '3,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0; }
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only)       ONLY="${2:-}"; shift 2 || die "--only needs a repo name" ;;
+    --skip-setup) SKIP_SETUP=1; shift ;;
+    --doctor)     DOCTOR_ONLY=1; shift ;;
+    -h|--help)    usage ;;
+    *)            die "unknown option: $1 (try --help)" ;;
+  esac
+done
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# ---------------------------------------------------------------- prerequisites
+
+doctor() {
+  local missing=0
+
+  step "Prerequisites"
+
+  if have git; then ok "git       $(git --version | awk '{print $3}')"
+  else bad "git"; missing=1; fi
+
+  if have python3; then ok "python3   $(python3 --version | awk '{print $2}')"
+  else bad "python3   (reads repos.yml)"; missing=1; fi
+
+  if have uvx || have uv; then ok "uv        $(uv --version 2>/dev/null | awk '{print $2}')"
+  else bad "uv        (runs the specify CLI)"
+       note "curl -LsSf https://astral.sh/uv/install.sh | sh"; missing=1; fi
+
+  if have specify; then ok "specify   $(specify --version 2>/dev/null | tail -1)"
+  else warn "specify   not on PATH — uvx can run it on demand"; fi
+
+  # Not fatal, but Claude Code's Grep is ripgrep. Without it the .ignore file
+  # that makes the child repos searchable has nothing to act on.
+  if have rg; then ok "rg        $(rg --version | head -1 | awk '{print $2}')"
+  else warn "rg        not installed — agent search across the child repos degrades"; fi
+
+  step "Workspace"
+
+  if [ -f "$ROOT/repos.yml" ] && "$ROOT/bin/repos" validate 2>/dev/null; then
+    ok "repos.yml parses ($("$ROOT/bin/repos" dirs | wc -l | tr -d ' ') repos)"
+  else
+    bad "repos.yml is missing or malformed"
+    "$ROOT/bin/repos" validate 2>&1 | sed 's/^/          /'
+    missing=1
+  fi
+
+  if [ -d "$ROOT/.specify" ]; then ok ".specify/ present at this root"
+  else bad ".specify/ missing — this is not a spec-kit workspace"; missing=1; fi
+
+  # A child carrying its own .specify/ captures root resolution: spec-kit
+  # called from inside it stops there and writes specs into the code repo.
+  local shadow=0 dir
+  while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    if [ -d "$ROOT/$dir/.specify" ]; then
+      bad "$dir/.specify/ shadows this root — remove it"
+      shadow=1
+    fi
+  done < <("$ROOT/bin/repos" dirs 2>/dev/null)
+  [ "$shadow" -eq 0 ] && ok "no child repo shadows the workspace root"
+  [ "$shadow" -eq 1 ] && missing=1
+
+  return $missing
+}
+
+# ------------------------------------------------------------------- repo sync
+
+clone_or_pull() {
+  local dir="$1" url="$2"
+  local path="$ROOT/$dir"
+
+  if [ ! -d "$path/.git" ]; then
+    if git clone "$url" "$path"; then ok "cloned into $dir/"
+    else bad "could not clone $url"; return 1; fi
+    return 0
+  fi
+
+  if [ -n "$(git -C "$path" status --porcelain)" ]; then
+    warn "$dir has uncommitted changes — not pulling"
+    return 0
+  fi
+
+  local branch; branch="$(git -C "$path" rev-parse --abbrev-ref HEAD)"
+  if git -C "$path" pull --ff-only --quiet 2>/dev/null; then
+    ok "$dir up to date ($branch)"
+  else
+    warn "$dir ($branch) could not fast-forward — left untouched"
+  fi
+}
+
+# ------------------------------------------------------------------------ main
+
+step "Workspace: $ROOT"
+note "spec-kit resolves here from anywhere below; the children are plain clones"
+
+if ! doctor; then
+  [ "$DOCTOR_ONLY" -eq 1 ] && exit 1
+  die "prerequisites are missing (see above) — fix them and re-run"
+fi
+[ "$DOCTOR_ONLY" -eq 1 ] && exit 0
+
+step "Ignore files"
+"$ROOT/bin/sync-ignores" | sed 's/^/  /'
+
+failures=0
+while IFS=$'\t' read -r dir url trunk stack setup; do
+  [ -n "$dir" ] || continue
+  [ -n "$ONLY" ] && [ "$ONLY" != "$dir" ] && continue
+
+  step "$dir — ${stack:-no stack declared}"
+  clone_or_pull "$dir" "$url" || { failures=$((failures + 1)); continue; }
+
+  if [ -z "$setup" ]; then
+    note "no setup command declared in repos.yml"
+  elif [ "$SKIP_SETUP" -eq 1 ]; then
+    note "skipping $setup (--skip-setup)"
+  elif [ -x "$ROOT/$dir/$setup" ]; then
+    (cd "$ROOT/$dir" && "./$setup") || { bad "$setup failed"; failures=$((failures + 1)); }
+  else
+    warn "$setup is not executable in $dir/ — skipped"
+  fi
+done < <("$ROOT/bin/repos" list)
+
+step "Done"
+if [ "$failures" -gt 0 ]; then
+  bad "$failures repo(s) had problems — see above"
+  exit 1
+fi
+note "open your agent HERE, at the workspace root — specs and code are one tree"

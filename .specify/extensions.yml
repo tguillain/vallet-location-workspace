@@ -1,0 +1,23 @@
+installed:
+- multirepo
+settings:
+  auto_execute_hooks: true
+hooks:
+  before_implement:
+  - extension: multirepo
+    command: speckit.multirepo.branch
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.multirepo.branch?
+    description: Branch every affected child repo before any code is written
+    condition: null
+  after_implement:
+  - extension: multirepo
+    command: speckit.multirepo.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.multirepo.status?
+    description: Report per-repo state, since nothing else can call the feature done
+    condition: null

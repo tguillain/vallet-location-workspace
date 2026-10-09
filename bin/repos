@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+#
+# Read and edit repos.yml, the workspace's declaration of its child repos.
+#
+#   repos list              TAB-separated: dir url trunk stack setup
+#   repos dirs              one directory name per line
+#   repos validate          explain what is wrong, exit non-zero
+#   repos add <clone-url>   trunk read from the remote, ignore files synced
+#   repos remove <dir>      leaves the clone on disk alone
+#
+# add and remove rewrite repos.yml as text rather than re-serialising it: the
+# comments in that file are its documentation, and a YAML round-trip would
+# delete every one of them. Parsing lives in manifest.py.
+
+import subprocess
+import sys
+from pathlib import Path
+
+# Importing manifest.py must not leave a __pycache__ next to it: bin/ is tracked
+# by the workspace repo, and a stray .pyc would land in `git add -A`.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from manifest import FIELDS, RepoFileError, parse, resolve_url, strip_comment  # noqa: E402
+
+MARKERS = (("pubspec.yaml", "Flutter"), ("artisan", "Laravel"), ("nuxt.config.ts", "Nuxt"),
+           ("pyproject.toml", "Python"), ("package.json", "Node"), ("composer.json", "PHP"))
+
+
+def _remote_trunk(url):
+    try:
+        result = subprocess.run(["git", "ls-remote", "--symref", url, "HEAD"],
+                                capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RepoFileError(f"could not reach {url} — {error}")
+    if result.returncode != 0:
+        detail = result.stderr.strip().splitlines()
+        raise RepoFileError(f"could not reach {url} — {detail[-1] if detail else 'unknown error'}")
+    for line in result.stdout.splitlines():
+        if line.startswith("ref:") and "HEAD" in line:
+            return line.split()[1].rsplit("/", 1)[-1]
+    raise RepoFileError(f"{url} did not report a default branch — pass --trunk")
+
+
+def _detect_stack(path):
+    for marker, stack in MARKERS:
+        if (path / marker).exists():
+            return stack
+    return ""
+
+
+def _sync_ignores(root):
+    script = root / "bin" / "sync-ignores"
+    if script.is_file():
+        subprocess.run([str(script)], cwd=str(root))
+
+
+def _overrides(rest):
+    found = {}
+    while rest:
+        flag, rest = rest[0], rest[1:]
+        key = flag[2:] if flag.startswith("--") else ""
+        if key not in FIELDS or not rest:
+            raise RepoFileError(f"unexpected argument `{flag}` (use --dir --trunk --stack --setup)")
+        found[key], rest = rest[0], rest[1:]
+    return found
+
+
+def cmd_add(root, argv):
+    if not argv:
+        raise RepoFileError("add needs a clone URL")
+    overrides = _overrides(argv[1:])
+    manifest = root / "repos.yml"
+    workspace, repos = parse(manifest, allow_empty=True)
+
+    url = resolve_url(argv[0], workspace.get("git_base", ""))
+    directory = overrides.get("dir") or url.rsplit("/", 1)[-1].removesuffix(".git")
+    if any(repo["dir"] == directory for repo in repos):
+        raise RepoFileError(f"`{directory}` is already declared in repos.yml")
+    trunk = overrides.get("trunk") or _remote_trunk(url)
+    stack = overrides.get("stack") or _detect_stack(root / directory)
+
+    base = workspace.get("git_base", "").rstrip("/")
+    short = url[len(base) + 1:] if base and url.startswith(base + "/") else url
+    entry = [f"  - dir: {directory}", f"    url: {short}", f"    trunk: {trunk}"]
+    if stack:
+        entry.append(f"    stack: {stack}")
+    if overrides.get("setup"):
+        entry.append(f"    setup: {overrides['setup']}")
+
+    text = manifest.read_text(encoding="utf-8").rstrip("\n")
+    manifest.write_text(f"{text}\n\n" + "\n".join(entry) + "\n", encoding="utf-8")
+    print(f"  detected trunk: {trunk}")
+    print(f"  dir:            {directory}")
+    print(f"  stack:          {stack or 'not detected'}")
+    print("  added to repos.yml")
+    _sync_ignores(root)
+    print(f"  next: ./bootstrap --only {directory}")
+
+
+def cmd_remove(root, argv):
+    if not argv:
+        raise RepoFileError("remove needs a directory name")
+    directory, manifest = argv[0], root / "repos.yml"
+    parse(manifest, allow_empty=True)
+
+    kept, dropping, found = [], False, False
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- "):
+            dropping = strip_comment(line).strip() == f"- dir: {directory}"
+            found = found or dropping
+        elif dropping and stripped and not line[0].isspace():
+            dropping = False
+        if not dropping:
+            kept.append(line)
+
+    if not found:
+        raise RepoFileError(f"`{directory}` is not declared in repos.yml")
+    manifest.write_text("\n".join(kept).rstrip("\n") + "\n", encoding="utf-8")
+    print(f"  removed {directory} from repos.yml — the clone on disk is untouched")
+    _sync_ignores(root)
+
+
+def main(argv):
+    command = argv[1] if len(argv) > 1 else ""
+    if command not in ("list", "dirs", "validate", "add", "remove"):
+        print(f"usage: {Path(argv[0]).name} list|dirs|validate|add <url>|remove <dir>", file=sys.stderr)
+        return 2
+
+    root = Path(__file__).resolve().parent.parent
+    try:
+        if command == "add":
+            cmd_add(root, argv[2:])
+        elif command == "remove":
+            cmd_remove(root, argv[2:])
+        else:
+            _, repos = parse(root / "repos.yml")
+            for repo in repos:
+                if command == "list":
+                    print("\t".join(repo[field] for field in FIELDS))
+                elif command == "dirs":
+                    print(repo["dir"])
+    except (RepoFileError, OSError) as error:
+        print(f"repos.yml: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

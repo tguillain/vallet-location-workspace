@@ -1,0 +1,1 @@
+../../../.specify/extensions/multirepo/.specify-dev/agent-commands/claude/speckit-multirepo-status/SKILL.md
