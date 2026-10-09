@@ -49,6 +49,14 @@ En tant que directeur, je veux voir les réservations reprises des Excel qui se 
 
 1. **Given** les réservations importées, **When** j'ouvre le planning, **Then** les deux réservations de NAC112 (BTP Rhone / Maconnerie Duclos) sont signalées en conflit.
 
+### User Story 4 — Voir les nacelles dont la VGP n’est pas à jour (Priority: P2)
+
+En tant que responsable d’agence ou directeur, je veux voir d’un coup d’œil les nacelles des 7 agences dont la VGP est expirée, afin de les faire contrôler avant qu’un client les demande.
+
+**Acceptance Scenarios**:
+
+1. **Given** on est le 12/10/2026, **When** j’ouvre la vue VGP, **Then** NAC089 (Lyon Est) apparaît en tête comme « VGP expirée depuis le 05/09 », puis les nacelles à jour avec leur date de fin de validité, la plus proche d’abord (NAC118 : jusqu’au 14/10).
+
 ### Edge Cases
 
 - Réservation d'un seul jour (du = au) : valide (cf. COMP21 le 12/10).
@@ -68,6 +76,7 @@ En tant que directeur, je veux voir les réservations reprises des Excel qui se 
 - **FR-006** — La recherche couvre les 7 agences (Lyon Est, Villeurbanne, Grenoble, Saint-Étienne, Clermont-Ferrand, Annecy, Valence), filtre par type et période, et affiche pour chaque machine indisponible son **motif**.
 - **FR-007** — Les réservations existantes (Excel) sont importées telles quelles ; celles qui violent FR-001 sont signalées, pas supprimées.
 - **FR-008** — Une agence peut réserver une machine rattachée à une autre agence. Il faut alors **1 journée de transfert** juste avant le début de la location : ce jour-là doit être libre (ni réservée, ni à l'atelier) et ne peut pas être passé — la location commence donc au plus tôt demain. Si l'agence qui réserve est celle de la machine, aucun délai.
+- **FR-009** — Une vue liste toutes les nacelles des 7 agences avec leur agence, leur dernière VGP, leur date de fin de validité et leur état : **expirée** ou **à jour**. Les expirées sont en tête, puis les autres par date de fin de validité croissante. Le nombre de nacelles expirées est visible depuis l’accueil.
 
 ### Ce que l'outil ne fait pas (cette itération)
 
@@ -88,12 +97,13 @@ Appli pour particuliers, tarifs / devis / facturation, organisation logistique d
 5. **Étant donné** NAC140 réservée du 19 au 23/10, **quand** je réserve NAC140 du 13 au 18/10, **alors** c'est accepté (pas de chevauchement) et visible depuis toutes les agences.
 6. **Étant donné** NAC140 (rattachée à Grenoble) réservée du 19 au 23/10, **quand** Lyon Est la réserve du 24 au 26/10, **alors** c'est refusé (le 23/10, jour de transfert, est occupé) ; du 13 au 17/10, c'est accepté ; à partir du 12/10 (aujourd'hui), c'est refusé (pas le temps de transférer).
 7. **Étant donné** NAC118 (VGP valide jusqu'au 14/10), **quand** Annecy la réserve du 13 au 16/10, **alors** c'est refusé (VGP expirée pendant la location) ; du 13 au 14/10, c'est accepté.
+8. **Étant donné** aujourd’hui le 12/10, **quand** j’ouvre la vue VGP, **alors** NAC089 est la seule nacelle expirée et apparaît en premier ; NAC118 suit, à jour jusqu’au 14/10.
 
 ## Success Criteria *(mandatory)*
 
 - **SC-001** — 0 double réservation possible sur une même machine.
 - **SC-002** — Une recherche multi-agences donne une réponse en moins de 30 secondes d'utilisation, sans appeler les autres agences.
-- **SC-003** — Les 7 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
+- **SC-003** — Les 8 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
 
 ## Réponses de Brice (2026-10-09)
 
