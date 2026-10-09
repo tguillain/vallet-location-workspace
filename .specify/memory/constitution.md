@@ -1,50 +1,77 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Vallet Location Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Les règles métier vivent dans l'API
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Toute règle de réservation (chevauchement, VGP, atelier, transfert, options, bon de
+commande, droits d'annulation…) MUST être implémentée et vérifiée dans `back` (Laravel).
+`web` (Nuxt) MUST NOT en dupliquer la logique : il affiche les résultats et les motifs
+renvoyés par l'API. Une pré-validation d'ergonomie côté web (champ requis, date de fin
+recalée) est permise, mais l'API fait foi et revalide tout.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+*Pourquoi* : sept agences, une seule vérité. Une règle codée deux fois finit par diverger,
+et c'est exactement le problème des fichiers Excel qu'on remplace.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Chaque règle a son test
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Chaque exigence `FR-xxx` de la spec MUST être couverte par au moins un test automatisé
+(PHPUnit, tier Feature côté `back`). Les tests « Étant donné / Quand / Alors » de `spec.md`
+sont les tests d'acceptation et MUST exister sous forme exécutable avant qu'une feature
+soit déclarée terminée. Un test rouge bloque la MR.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### III. Conventions Xefi
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+Le code suit les conventions des plugins Xefi `laravel` et `nuxt` et l'architecture OSDD.
+Code, identifiants, noms de tables et de routes MUST être en anglais ; tout texte vu par
+l'utilisateur MUST être en français et passer par les traductions, jamais en dur.
+Chaque repo enfant MUST avoir son `CLAUDE.md`.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### IV. Le contrat d'API d'abord
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Le contrat d'API (endpoints, payloads, codes et messages d'erreur) MUST être figé dans le
+`plan.md` de la feature avant toute ligne de code. `back` et `web` développent en parallèle
+contre ce contrat. Tout changement de contrat MUST repasser par le plan, jamais être
+improvisé dans un seul des deux repos.
+
+### V. Tout en Docker
+
+Chaque repo MUST fournir un `docker-compose` qui permet d'installer, lancer et tester le
+projet. Aucun outil autre que Docker et Git MUST être requis sur un poste de développement.
+
+*Pourquoi* : deux développeurs sous Windows, sans PHP ni Node installés ; un environnement
+identique pour les deux évite les « ça marche chez moi ».
+
+### VI. La spec est la seule mémoire du projet
+
+Toute nouvelle règle, toute révélation du client MUST d'abord être écrite dans `spec.md`
+(règle + test) avant d'atteindre le code. Une correction faite directement dans le code
+ou dans une conversation avec l'IA sans passer par la spec est un défaut.
+
+## Stack et environnement
+
+- `back` : Laravel (dernière version stable), PostgreSQL, PHPUnit, Larastan.
+- `web` : Nuxt (dernière version stable), consomme uniquement l'API `back`.
+- Dates : granularité journée, bornes incluses, fuseau Europe/Paris ; « maintenant » est
+  injectable pour que les tests fixent la date (ex. lundi 12/10/2026, 9 h).
+
+## Workflow de développement
+
+- Cycle `feature-cycle` spec-kit : specify → (design) → plan → tasks → implement, avec une
+  relecture humaine à chaque étape, puis `/speckit-converge` jusqu'à « Converged ».
+- Specs commitées et poussées dans le workspace à la fin de chaque étape.
+- Une MR (PR GitHub) par repo, liées par le numéro de feature. `back` est mergé avant `web` ;
+  la MR `web` reste ouverte tant que l'endpoint n'est pas sur la branche principale de `back`.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Cette constitution prime sur toute autre pratique du projet. Un plan qui la viole MUST le
+justifier explicitement dans sa section « Constitution Check », sinon il est refusé.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendement : proposition écrite, accord des deux développeurs, mise à jour de ce fichier,
+commit dans le workspace. Versionnement sémantique : MAJOR pour un principe retiré ou
+redéfini, MINOR pour un principe ou une section ajoutés, PATCH pour une reformulation.
+
+Chaque relecture de plan et de MR vérifie la conformité aux principes I à VI.
+
+**Version**: 1.0.0 | **Ratified**: 2026-10-09 | **Last Amended**: 2026-10-09
