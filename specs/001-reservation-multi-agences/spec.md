@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-reservation-multi-agences`
 **Created**: 2026-10-09
-**Status**: Draft — à valider avec Brice Vallet
+**Status**: Validée (réponses de Brice intégrées le 2026-10-09)
 **Input**: Consignes « Vallet Location — Du besoin au prototype » (9 oct. 2026) + extrait du parc et des réservations (`data/`)
 
 ## Le problème
@@ -60,16 +60,17 @@ En tant que directeur, je veux voir les réservations reprises des Excel qui se 
 ### Les règles que l'outil fait respecter
 
 - **FR-001** — Une machine ne peut pas avoir deux réservations dont les périodes se chevauchent (bornes incluses), quelle que soit l'agence qui saisit.
-- **FR-002** — Une nacelle n'est réservable que si sa VGP est valide **sur toute la période** de location ; validité = 6 mois après `derniere_vgp` *(à confirmer, question 1)*. Ex. : NAC089 (VGP 05/03) n'est plus louable ; NAC118 (VGP 15/04) n'est louable que jusqu'au 14/10 inclus.
+- **FR-002** — Une nacelle ne peut pas être louée si sa VGP expire pendant la location : la VGP doit être valide jusqu'au dernier jour inclus. Validité = 6 mois après `derniere_vgp`. Ex. : NAC089 (VGP 05/03) n'est plus louable ; NAC118 (VGP 15/04, valide jusqu'au 14/10) n'est louable que sur une période finissant au plus tard le 14/10.
 - **FR-003** — Une machine à l'atelier n'est pas réservable jusqu'à la date indiquée incluse (MINI07 : jusqu'au 20/10).
 - **FR-004** — La date de début est ≥ aujourd'hui et la date de fin ≥ date de début.
 - **FR-005** — Toute réservation porte : machine, client, du, au, agence de saisie. Client obligatoire.
 - **FR-006** — La recherche couvre les 7 agences (Lyon Est, Villeurbanne, Grenoble, Saint-Étienne, Clermont-Ferrand, Annecy, Valence), filtre par type et période, et affiche pour chaque machine indisponible son **motif**.
 - **FR-007** — Les réservations existantes (Excel) sont importées telles quelles ; celles qui violent FR-001 sont signalées, pas supprimées.
+- **FR-008** — Une agence peut réserver une machine rattachée à une autre agence. Il faut alors **1 journée de transfert** juste avant le début de la location : ce jour-là doit être libre (ni réservée, ni à l'atelier) et ne peut pas être passé — la location commence donc au plus tôt demain. Si l'agence qui réserve est celle de la machine, aucun délai.
 
 ### Ce que l'outil ne fait pas (cette itération)
 
-Appli pour particuliers, tarifs / devis / facturation, transfert de machines entre agences, gestion de l'atelier et des VGP (saisie), comptes et droits utilisateurs, modification/annulation de réservation *(à confirmer)*.
+Appli pour particuliers, tarifs / devis / facturation, organisation logistique du transfert (camion, chauffeur), gestion de l'atelier et des VGP (saisie), comptes et droits utilisateurs, modification/annulation de réservation *(à confirmer)*.
 
 ### Key Entities
 
@@ -77,27 +78,30 @@ Appli pour particuliers, tarifs / devis / facturation, transfert de machines ent
 - **Machine** : ref, type, agence de rattachement, date de dernière VGP (nacelles), indisponibilité atelier (jusqu'au).
 - **Réservation** : machine, client, du, au, agence de saisie.
 
-## Nos 5 tests
+## Nos tests
 
 1. **Étant donné** NAC112 réservée du 14 au 18/10, **quand** Villeurbanne tente de la réserver du 16 au 17/10, **alors** c'est refusé avec le motif et la réservation existante.
 2. **Étant donné** NAC089 (VGP du 05/03/2026), **quand** je cherche une « Nacelle 16 m » du 20 au 31/10, **alors** aucune machine n'est proposée, motif « VGP expirée ».
 3. **Étant donné** MINI07 à l'atelier jusqu'au 20/10, **quand** je la réserve du 21 au 23/10, **alors** c'est accepté ; du 19 au 21/10, c'est refusé.
 4. **Étant donné** aujourd'hui le 12/10, **quand** je réserve COMP30 du 10 au 11/10 ou du 15 au 13/10, **alors** c'est refusé (dates invalides).
 5. **Étant donné** NAC140 réservée du 19 au 23/10, **quand** je réserve NAC140 du 13 au 18/10, **alors** c'est accepté (pas de chevauchement) et visible depuis toutes les agences.
+6. **Étant donné** NAC140 (rattachée à Grenoble) réservée du 19 au 23/10, **quand** Lyon Est la réserve du 24 au 26/10, **alors** c'est refusé (le 23/10, jour de transfert, est occupé) ; du 13 au 17/10, c'est accepté ; à partir du 12/10 (aujourd'hui), c'est refusé (pas le temps de transférer).
+7. **Étant donné** NAC118 (VGP valide jusqu'au 14/10), **quand** Annecy la réserve du 13 au 16/10, **alors** c'est refusé (VGP expirée pendant la location) ; du 13 au 14/10, c'est accepté.
 
 ## Success Criteria *(mandatory)*
 
 - **SC-001** — 0 double réservation possible sur une même machine.
 - **SC-002** — Une recherche multi-agences donne une réponse en moins de 30 secondes d'utilisation, sans appeler les autres agences.
-- **SC-003** — Les 5 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
+- **SC-003** — Les 7 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
 
-## Questions ouvertes pour Brice (2 autorisées)
+## Réponses de Brice (2026-10-09)
 
-1. **VGP** : la VGP d'une nacelle est-elle bien valable 6 mois, et doit-elle couvrir toute la durée de location (ou seulement le jour de départ) ?
-2. **Réservation inter-agences** : une agence peut-elle réserver une machine rattachée à une autre agence (ex. Lyon Est qui réserve la nacelle de Grenoble), et faut-il prévoir un délai de transfert ?
+1. **VGP** : une nacelle ne peut pas être louée si sa VGP se termine pendant la location → FR-002, test 7.
+2. **Inter-agences** : autorisé, avec 1 journée de délai de transfert → FR-008, test 6.
 
 ## Assumptions
 
 - Dates inclusives ; granularité journée.
 - `derniere_vgp` vide = machine non soumise à VGP (pas une nacelle).
+- La VGP des nacelles est valable 6 mois (périodicité réglementaire des appareils de levage de personnes) ; Brice a confirmé la règle, pas la durée.
 - Le conflit NAC112 existant est une donnée réelle à arbitrer par l'humain, pas à corriger automatiquement.
