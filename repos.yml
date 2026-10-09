@@ -34,3 +34,13 @@ workspace:
 #     setup: bin/setup            # optional; run by ./bootstrap if executable
 
 repos:
+
+  - dir: back
+    url: git@github.com:tguillain/vallet-location-api.git
+    trunk: main
+    stack: Laravel
+
+  - dir: web
+    url: git@github.com:tguillain/vallet-location-web.git
+    trunk: main
+    stack: Nuxt
