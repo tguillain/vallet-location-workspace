@@ -52,7 +52,7 @@ def _detect_stack(path):
 def _sync_ignores(root):
     script = root / "bin" / "sync-ignores"
     if script.is_file():
-        subprocess.run([str(script)], cwd=str(root))
+        subprocess.run(["bash", script.as_posix()], cwd=str(root))
 
 
 def _overrides(rest):
