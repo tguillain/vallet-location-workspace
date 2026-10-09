@@ -83,20 +83,25 @@ En tant que responsable d’agence ou directeur, je veux voir dans un seul ongle
 - **FR-005** — Toute réservation porte : machine, client, du, au, agence de saisie. Client obligatoire.
 - **FR-006** — La recherche couvre les 7 agences (Lyon Est, Villeurbanne, Grenoble, Saint-Étienne, Clermont-Ferrand, Annecy, Valence), filtre par type **ou par référence** de machine (référence partielle acceptée, majuscules/minuscules indifférentes ; une référence saisie prime sur le type) et par période, et affiche pour chaque machine indisponible son **motif**.
 - **FR-007** — Les réservations existantes (Excel) sont importées telles quelles ; celles qui violent FR-001 sont signalées, pas supprimées.
-- **FR-008** — Une agence peut réserver une machine rattachée à une autre agence. Il faut alors **1 journée de transfert** juste avant le début de la location : ce jour-là doit être libre (ni réservée, ni à l'atelier) et ne peut pas être passé — la location commence donc au plus tôt demain. Si l'agence qui réserve est celle de la machine, aucun délai.
+- **FR-008** — Une agence peut réserver une machine rattachée à une autre agence. La machine voyage une demi-journée : elle doit être **libre la veille du départ** (ni réservée, ni à l’atelier), et cette veille ne peut pas être passée — la location commence donc au plus tôt demain. Si l’agence qui réserve est celle de la machine, aucun délai. *(Confirmé par Brice, révélation 1.)*
 - **FR-009** — Une vue liste toutes les nacelles des 7 agences avec leur agence, leur dernière VGP, leur date de fin de validité et leur état : **expirée** ou **à jour**. Les expirées sont en tête, puis les autres par date de fin de validité croissante. Le nombre de nacelles expirées est visible depuis l’accueil.
 - **FR-010** — Un onglet « À traiter » liste chaque réservation existante qui enfreint au moins une règle, avec ses motifs : double réservation (FR-001), VGP expirée ou qui expire pendant la location (FR-002), machine à l’atelier pendant la location (FR-003), jour de transfert occupé pour une réservation inter-agences qui n’a pas encore commencé (FR-008). Les dates passées (FR-004) ne sont pas un problème pour une réservation déjà en cours. L’outil signale, il ne modifie ni ne supprime rien. Le nombre de réservations à traiter est visible depuis l’accueil.
 - **FR-011** — Une nacelle dont la VGP expire **moins de 30 jours après la fin de la location** reste réservable mais est signalée dans la recherche (« VGP à refaire le JJ/MM »). Dans l’onglet VGP, une nacelle dont la VGP expire dans moins de 30 jours à compter d’aujourd’hui est signalée « expire bientôt ».
+- **FR-012** — Une réservation pour un **client grand compte** n’est valable qu’avec un **numéro de bon de commande** : sans lui, la réservation est refusée. L’agent indique à la saisie si le client est grand compte. *(Révélation 2.)*
+- **FR-013** — Au retour, une machine est nettoyée et contrôlée : **elle ne peut pas être relouée le jour de son retour** (le dernier jour de location). Une location peut commencer au plus tôt le lendemain du retour. *(Révélation 3 — déjà garanti par FR-001, bornes incluses.)*
+- **FR-014** — Une réservation peut être saisie comme **option** : le client a **48 h** pour confirmer. Tant qu’elle n’est pas expirée, une option bloque la machine comme une réservation ferme. Confirmée, elle devient ferme ; non confirmée au bout de 48 h, elle **saute** automatiquement et ne bloque plus la machine. Les réservations reprises des Excel sont fermes. *(Révélation 4.)*
+- **FR-015** — Une réservation qui n’a pas commencé peut être **annulée** ; elle reste visible comme annulée et ne bloque plus la machine. Un agent peut annuler une réservation saisie par **son** agence ; une réservation saisie par **une autre agence** ne peut être annulée **que par un responsable d’agence**. *(Révélation 5.)*
 
 ### Ce que l'outil ne fait pas (cette itération)
 
-Appli pour particuliers, tarifs / devis / facturation, organisation logistique du transfert (camion, chauffeur), gestion de l'atelier et des VGP (saisie), comptes et droits utilisateurs, modification/annulation de réservation *(à confirmer)*.
+Appli pour particuliers, tarifs / devis / facturation, organisation logistique du transfert (camion, chauffeur), gestion de l’atelier et des VGP (saisie), authentification (le prototype choisit l’agence et le rôle dans l’en-tête), modification d’une réservation (seule l’annulation est possible).
 
 ### Key Entities
 
 - **Agence** : nom (7 valeurs fixes).
 - **Machine** : ref, type, agence de rattachement, date de dernière VGP (nacelles), indisponibilité atelier (jusqu'au).
-- **Réservation** : machine, client, du, au, agence de saisie.
+- **Réservation** : machine, client, du, au, agence de saisie, statut (option / ferme / annulée), échéance de l’option, client grand compte (oui/non), numéro de bon de commande.
+- **Utilisateur** : agence, rôle (agent / responsable d’agence).
 
 ## Nos tests
 
@@ -111,12 +116,31 @@ Appli pour particuliers, tarifs / devis / facturation, organisation logistique d
 9. **Étant donné** les réservations reprises des Excel, **quand** j’ouvre « À traiter », **alors** 3 réservations apparaissent : NAC112 BTP Rhone (double réservation), NAC112 Maconnerie Duclos (double réservation + jour de transfert 15/10 occupé), NAC089 Facades Martin (VGP expirée depuis le 05/09) ; COMP21, ECH40, NAC140 et MINI12 n’y sont pas.
 10. **Étant donné** la recherche, **quand** je saisis « nac1 » du 13 au 14/10, **alors** NAC112, NAC140 et NAC118 sont listées (quel que soit le type choisi) avec leur disponibilité.
 11. **Étant donné** NAC118 (VGP valable jusqu’au 14/10), **quand** je cherche une Nacelle 12 m du 13 au 14/10, **alors** NAC118 est disponible mais signalée « VGP à refaire le 14/10 » ; dans l’onglet VGP elle est « expire bientôt ».
+12. **Étant donné** un client grand compte, **quand** je réserve COMP30 du 13 au 15/10 sans numéro de bon de commande, **alors** c’est refusé ; avec le numéro « BC-2026-118 », c’est accepté et le numéro est affiché dans le planning.
+13. **Étant donné** NAC140 réservée du 19 au 23/10 (retour le 23), **quand** Grenoble la réserve à partir du 23/10, **alors** c’est refusé ; à partir du 24/10, c’est accepté.
+14. **Étant donné** le 12/10 à 9 h, **quand** je réserve COMP30 du 13 au 15/10 en option, **alors** elle apparaît « Option — à confirmer avant le 14/10 9 h » et COMP30 n’est plus proposée sur ces dates ; quand je la confirme, elle devient ferme ; une option non confirmée après le 14/10 9 h ne bloque plus la machine.
+15. **Étant donné** Lyon Est connecté en agent, **quand** j’annule la réservation NAC140 de BTP Rhone (saisie par Grenoble), **alors** c’est refusé (« réservée au responsable d’agence ») ; en responsable d’agence, c’est accepté et NAC140 redevient disponible du 19 au 23/10.
+16. **Étant donné** Lyon Est connecté en agent, **quand** j’annule la réservation NAC089 de Facades Martin (saisie par Lyon Est), **alors** c’est accepté et elle disparaît de « À traiter ».
 
 ## Success Criteria *(mandatory)*
 
 - **SC-001** — 0 double réservation possible sur une même machine.
 - **SC-002** — Une recherche multi-agences donne une réponse en moins de 30 secondes d'utilisation, sans appeler les autres agences.
-- **SC-003** — Les 11 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
+- **SC-003** — Les 16 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
+
+## Révélations de Brice (recette du 2026-10-12)
+
+1. Une machine d’une autre agence voyage une demi-journée : libre la veille du départ → FR-008 (déjà couvert), test 6.
+2. Grand compte = numéro de bon de commande obligatoire → FR-012, test 12.
+3. Pas de relocation le jour du retour (nettoyage, contrôle) → FR-013, test 13.
+4. Options : 48 h pour confirmer, sinon elles sautent → FR-014, test 14.
+5. Seul le responsable d’agence annule une réservation saisie par une autre agence → FR-015, tests 15-16.
+
+### Questions ouvertes
+
+- Comment sait-on qu’un client est grand compte (liste fournie, ou case cochée à la saisie comme dans le prototype) ?
+- Les 48 h d’une option courent-elles depuis la saisie (hypothèse retenue) ?
+- « Responsable d’agence » : n’importe quel responsable, ou celui de l’agence de la machine (hypothèse retenue : n’importe quel responsable) ?
 
 ## Réponses de Brice (2026-10-09)
 
