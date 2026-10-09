@@ -79,13 +79,14 @@ En tant que responsable d’agence ou directeur, je veux voir dans un seul ongle
 - **FR-001** — Une machine ne peut pas avoir deux réservations dont les périodes se chevauchent (bornes incluses), quelle que soit l'agence qui saisit.
 - **FR-002** — Une nacelle ne peut pas être louée si sa VGP expire pendant la location : la VGP doit être valide jusqu'au dernier jour inclus. Validité = 6 mois après `derniere_vgp`. Ex. : NAC089 (VGP 05/03) n'est plus louable ; NAC118 (VGP 15/04, valide jusqu'au 14/10) n'est louable que sur une période finissant au plus tard le 14/10.
 - **FR-003** — Une machine à l'atelier n'est pas réservable jusqu'à la date indiquée incluse (MINI07 : jusqu'au 20/10).
-- **FR-004** — La date de début est ≥ aujourd'hui et la date de fin ≥ date de début.
+- **FR-004** — La date de début est ≥ aujourd’hui et la date de fin ≥ date de début. Si l’utilisateur choisit une date de début postérieure à la date de fin, la date de fin prend automatiquement la valeur de la date de début.
 - **FR-005** — Toute réservation porte : machine, client, du, au, agence de saisie. Client obligatoire.
-- **FR-006** — La recherche couvre les 7 agences (Lyon Est, Villeurbanne, Grenoble, Saint-Étienne, Clermont-Ferrand, Annecy, Valence), filtre par type et période, et affiche pour chaque machine indisponible son **motif**.
+- **FR-006** — La recherche couvre les 7 agences (Lyon Est, Villeurbanne, Grenoble, Saint-Étienne, Clermont-Ferrand, Annecy, Valence), filtre par type **ou par référence** de machine (référence partielle acceptée, majuscules/minuscules indifférentes ; une référence saisie prime sur le type) et par période, et affiche pour chaque machine indisponible son **motif**.
 - **FR-007** — Les réservations existantes (Excel) sont importées telles quelles ; celles qui violent FR-001 sont signalées, pas supprimées.
 - **FR-008** — Une agence peut réserver une machine rattachée à une autre agence. Il faut alors **1 journée de transfert** juste avant le début de la location : ce jour-là doit être libre (ni réservée, ni à l'atelier) et ne peut pas être passé — la location commence donc au plus tôt demain. Si l'agence qui réserve est celle de la machine, aucun délai.
 - **FR-009** — Une vue liste toutes les nacelles des 7 agences avec leur agence, leur dernière VGP, leur date de fin de validité et leur état : **expirée** ou **à jour**. Les expirées sont en tête, puis les autres par date de fin de validité croissante. Le nombre de nacelles expirées est visible depuis l’accueil.
 - **FR-010** — Un onglet « À traiter » liste chaque réservation existante qui enfreint au moins une règle, avec ses motifs : double réservation (FR-001), VGP expirée ou qui expire pendant la location (FR-002), machine à l’atelier pendant la location (FR-003), jour de transfert occupé pour une réservation inter-agences qui n’a pas encore commencé (FR-008). Les dates passées (FR-004) ne sont pas un problème pour une réservation déjà en cours. L’outil signale, il ne modifie ni ne supprime rien. Le nombre de réservations à traiter est visible depuis l’accueil.
+- **FR-011** — Une nacelle dont la VGP expire **moins de 30 jours après la fin de la location** reste réservable mais est signalée dans la recherche (« VGP à refaire le JJ/MM »). Dans l’onglet VGP, une nacelle dont la VGP expire dans moins de 30 jours à compter d’aujourd’hui est signalée « expire bientôt ».
 
 ### Ce que l'outil ne fait pas (cette itération)
 
@@ -102,18 +103,20 @@ Appli pour particuliers, tarifs / devis / facturation, organisation logistique d
 1. **Étant donné** NAC112 réservée du 14 au 18/10, **quand** Villeurbanne tente de la réserver du 16 au 17/10, **alors** c'est refusé avec le motif et la réservation existante.
 2. **Étant donné** NAC089 (VGP du 05/03/2026), **quand** je cherche une « Nacelle 16 m » du 20 au 31/10, **alors** aucune machine n'est proposée, motif « VGP expirée ».
 3. **Étant donné** MINI07 à l'atelier jusqu'au 20/10, **quand** je la réserve du 21 au 23/10, **alors** c'est accepté ; du 19 au 21/10, c'est refusé.
-4. **Étant donné** aujourd'hui le 12/10, **quand** je réserve COMP30 du 10 au 11/10 ou du 15 au 13/10, **alors** c'est refusé (dates invalides).
+4. **Étant donné** aujourd’hui le 12/10, **quand** je réserve COMP30 du 10 au 11/10, **alors** c’est refusé (date passée) ; **quand** la fin est au 15/10 et que je choisis un début au 18/10, **alors** la fin passe automatiquement au 18/10.
 5. **Étant donné** NAC140 réservée du 19 au 23/10, **quand** je réserve NAC140 du 13 au 18/10, **alors** c'est accepté (pas de chevauchement) et visible depuis toutes les agences.
 6. **Étant donné** NAC140 (rattachée à Grenoble) réservée du 19 au 23/10, **quand** Lyon Est la réserve du 24 au 26/10, **alors** c'est refusé (le 23/10, jour de transfert, est occupé) ; du 13 au 17/10, c'est accepté ; à partir du 12/10 (aujourd'hui), c'est refusé (pas le temps de transférer).
 7. **Étant donné** NAC118 (VGP valide jusqu'au 14/10), **quand** Annecy la réserve du 13 au 16/10, **alors** c'est refusé (VGP expirée pendant la location) ; du 13 au 14/10, c'est accepté.
 8. **Étant donné** aujourd’hui le 12/10, **quand** j’ouvre la vue VGP, **alors** NAC089 est la seule nacelle expirée et apparaît en premier ; NAC118 suit, à jour jusqu’au 14/10.
 9. **Étant donné** les réservations reprises des Excel, **quand** j’ouvre « À traiter », **alors** 3 réservations apparaissent : NAC112 BTP Rhone (double réservation), NAC112 Maconnerie Duclos (double réservation + jour de transfert 15/10 occupé), NAC089 Facades Martin (VGP expirée depuis le 05/09) ; COMP21, ECH40, NAC140 et MINI12 n’y sont pas.
+10. **Étant donné** la recherche, **quand** je saisis « nac1 » du 13 au 14/10, **alors** NAC112, NAC140 et NAC118 sont listées (quel que soit le type choisi) avec leur disponibilité.
+11. **Étant donné** NAC118 (VGP valable jusqu’au 14/10), **quand** je cherche une Nacelle 12 m du 13 au 14/10, **alors** NAC118 est disponible mais signalée « VGP à refaire le 14/10 » ; dans l’onglet VGP elle est « expire bientôt ».
 
 ## Success Criteria *(mandatory)*
 
 - **SC-001** — 0 double réservation possible sur une même machine.
 - **SC-002** — Une recherche multi-agences donne une réponse en moins de 30 secondes d'utilisation, sans appeler les autres agences.
-- **SC-003** — Les 9 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
+- **SC-003** — Les 11 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
 
 ## Réponses de Brice (2026-10-09)
 
