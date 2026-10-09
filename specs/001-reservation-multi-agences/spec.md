@@ -57,6 +57,14 @@ En tant que responsable d’agence ou directeur, je veux voir d’un coup d’œ
 
 1. **Given** on est le 12/10/2026, **When** j’ouvre la vue VGP, **Then** NAC089 (Lyon Est) apparaît en tête comme « VGP expirée depuis le 05/09 », puis les nacelles à jour avec leur date de fin de validité, la plus proche d’abord (NAC118 : jusqu’au 14/10).
 
+### User Story 5 — Voir les réservations à traiter (Priority: P2)
+
+En tant que responsable d’agence ou directeur, je veux voir dans un seul onglet les réservations existantes qui enfreignent une règle, afin de les arbitrer avant que la machine parte chez le client.
+
+**Acceptance Scenarios**:
+
+1. **Given** les réservations reprises des Excel, **When** j’ouvre l’onglet « À traiter », **Then** je vois NAC112 BTP Rhone et NAC112 Maconnerie Duclos (double réservation ; pour Duclos, en plus, jour de transfert du 15/10 occupé) et NAC089 Facades Martin (VGP expirée), chacune avec son ou ses motifs.
+
 ### Edge Cases
 
 - Réservation d'un seul jour (du = au) : valide (cf. COMP21 le 12/10).
@@ -77,6 +85,7 @@ En tant que responsable d’agence ou directeur, je veux voir d’un coup d’œ
 - **FR-007** — Les réservations existantes (Excel) sont importées telles quelles ; celles qui violent FR-001 sont signalées, pas supprimées.
 - **FR-008** — Une agence peut réserver une machine rattachée à une autre agence. Il faut alors **1 journée de transfert** juste avant le début de la location : ce jour-là doit être libre (ni réservée, ni à l'atelier) et ne peut pas être passé — la location commence donc au plus tôt demain. Si l'agence qui réserve est celle de la machine, aucun délai.
 - **FR-009** — Une vue liste toutes les nacelles des 7 agences avec leur agence, leur dernière VGP, leur date de fin de validité et leur état : **expirée** ou **à jour**. Les expirées sont en tête, puis les autres par date de fin de validité croissante. Le nombre de nacelles expirées est visible depuis l’accueil.
+- **FR-010** — Un onglet « À traiter » liste chaque réservation existante qui enfreint au moins une règle, avec ses motifs : double réservation (FR-001), VGP expirée ou qui expire pendant la location (FR-002), machine à l’atelier pendant la location (FR-003), jour de transfert occupé pour une réservation inter-agences qui n’a pas encore commencé (FR-008). Les dates passées (FR-004) ne sont pas un problème pour une réservation déjà en cours. L’outil signale, il ne modifie ni ne supprime rien. Le nombre de réservations à traiter est visible depuis l’accueil.
 
 ### Ce que l'outil ne fait pas (cette itération)
 
@@ -98,12 +107,13 @@ Appli pour particuliers, tarifs / devis / facturation, organisation logistique d
 6. **Étant donné** NAC140 (rattachée à Grenoble) réservée du 19 au 23/10, **quand** Lyon Est la réserve du 24 au 26/10, **alors** c'est refusé (le 23/10, jour de transfert, est occupé) ; du 13 au 17/10, c'est accepté ; à partir du 12/10 (aujourd'hui), c'est refusé (pas le temps de transférer).
 7. **Étant donné** NAC118 (VGP valide jusqu'au 14/10), **quand** Annecy la réserve du 13 au 16/10, **alors** c'est refusé (VGP expirée pendant la location) ; du 13 au 14/10, c'est accepté.
 8. **Étant donné** aujourd’hui le 12/10, **quand** j’ouvre la vue VGP, **alors** NAC089 est la seule nacelle expirée et apparaît en premier ; NAC118 suit, à jour jusqu’au 14/10.
+9. **Étant donné** les réservations reprises des Excel, **quand** j’ouvre « À traiter », **alors** 3 réservations apparaissent : NAC112 BTP Rhone (double réservation), NAC112 Maconnerie Duclos (double réservation + jour de transfert 15/10 occupé), NAC089 Facades Martin (VGP expirée depuis le 05/09) ; COMP21, ECH40, NAC140 et MINI12 n’y sont pas.
 
 ## Success Criteria *(mandatory)*
 
 - **SC-001** — 0 double réservation possible sur une même machine.
 - **SC-002** — Une recherche multi-agences donne une réponse en moins de 30 secondes d'utilisation, sans appeler les autres agences.
-- **SC-003** — Les 8 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
+- **SC-003** — Les 9 tests ci-dessus passent ; Sandrine, Mehdi et Julie réalisent une réservation seuls, sans explication.
 
 ## Réponses de Brice (2026-10-09)
 
