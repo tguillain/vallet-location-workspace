@@ -4,6 +4,7 @@
 **Created**: 2026-10-09
 **Status**: Validée (réponses de Brice intégrées le 2026-10-09)
 **Input**: Consignes « Vallet Location — Du besoin au prototype » (9 oct. 2026) + extrait du parc et des réservations (`data/`)
+**Prototype (étape 2)**: https://claude.ai/artifact/RqxVXrCi35rcK5dASeB1sP
 
 ## Le problème
 
